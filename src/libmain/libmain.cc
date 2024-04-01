@@ -1,6 +1,7 @@
 #include <Python.h>
 
 #include "wrap_orbit_mpi.hh"
+#include "wrap_orbit_cuda.hh"
 #include "wrap_bunch.hh"
 #include "wrap_spacecharge.hh"
 #include "wrap_linacmodule.hh"
@@ -52,6 +53,10 @@ PyMODINIT_FUNC PyInit__orbit(void) {
 
 PyMODINIT_FUNC PyInit__orbit_mpi(void) {
     return wrap_orbit_mpi::initorbit_mpi();
+}
+
+PyMODINIT_FUNC PyInit__orbit_cuda(void) {
+    return wrap_orbit_cuda::initorbit_cuda();
 }
 
 PyMODINIT_FUNC PyInit__bunch(void) {
