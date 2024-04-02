@@ -116,3 +116,59 @@ In the above line you can change the number 4 for however many MPI nodes you wou
 **./examples**		- pyORBIT3 examples.
 
 **./tests**		- pytests written for the CI Pipeline.
+
+### CUDA Submodule (Beta)
+
+This project includes a submodule for CUDA, a parallel computing platform and programming model developed by NVIDIA. CUDA enables developers to leverage the power of NVIDIA GPUs for parallel processing tasks, making it particularly useful for computationally intensive applications such as machine learning, scientific simulations, and image processing.
+
+#### Submodule Description
+
+The CUDA submodule contains kernels and wrappers to leverage the power of GPU-accelerated computing. It includes headers, runtime libraries, and utilities provided by NVIDIA to facilitate the development and execution of CUDA applications.
+
+### Installing CUDA and Drivers
+### Installing CUDA and Drivers
+
+1. **Check GPU Compatibility:**
+   - Verify that your GPU is compatible with the CUDA version you intend to install. Check the CUDA documentation for compatibility information.
+
+2. **Install NVIDIA Drivers:**
+   - Install the appropriate NVIDIA drivers for your GPU. You can use the `ubuntu-drivers` tool to identify and install the recommended drivers:
+     ```bash
+     sudo ubuntu-drivers autoinstall
+     ```
+
+3. **Download CUDA Toolkit:**
+   - Download the CUDA Toolkit from the NVIDIA website. Choose the version that matches your system configuration and requirements.
+
+4. **Run Installer:**
+   - Navigate to the directory where the CUDA Toolkit installer is downloaded and run it:
+     ```bash
+     sudo sh cuda_*.run
+     ```
+5. **Environment Setup:**
+   - Update your system's PATH environment variable to include CUDA binaries. Add the following lines to your `.bashrc` or `.bash_profile` file:
+     ```bash
+     export PATH=/usr/local/cuda/bin${PATH:+:${PATH}}
+     export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+     ```
+
+6. **Verify Installation:**
+   - After installation, verify that CUDA is correctly installed by checking the CUDA version:
+     ```bash
+     nvcc --version
+     ```
+
+#### Usage
+
+To use the CUDA submodule in this project, follow these steps:
+
+1. **CUDA**
+
+After installing cuda build the project anew
+```bash
+python setup.py clean --all
+python setup.py build
+pip install . 
+```
+
+Navigate to the GPU Examples directory and choose one of the examples
