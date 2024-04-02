@@ -1,3 +1,6 @@
+#ifndef WRAP_SAMPLE_CUDA_HH
+#define WRAP_SAMPLE_CUDA_HH
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -10,3 +13,5 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+#endif // WRAP_SAMPLE_CUDA_HH
+

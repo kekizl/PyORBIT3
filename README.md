@@ -126,7 +126,6 @@ This project includes a submodule for CUDA, a parallel computing platform and pr
 The CUDA submodule contains kernels and wrappers to leverage the power of GPU-accelerated computing. It includes headers, runtime libraries, and utilities provided by NVIDIA to facilitate the development and execution of CUDA applications.
 
 ### Installing CUDA and Drivers
-### Installing CUDA and Drivers
 
 1. **Check GPU Compatibility:**
    - Verify that your GPU is compatible with the CUDA version you intend to install. Check the CUDA documentation for compatibility information.
@@ -162,7 +161,7 @@ The CUDA submodule contains kernels and wrappers to leverage the power of GPU-ac
 
 To use the CUDA submodule in this project, follow these steps:
 
-1. **CUDA**
+**CUDA**
 
 After installing cuda build the project anew
 ```bash

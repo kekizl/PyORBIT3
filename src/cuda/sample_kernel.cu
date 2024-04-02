@@ -1,9 +1,5 @@
-// sample_kernel.cu
-
 #include <cuda_runtime.h>
-#include <sample_kernel.cuh>
-#ifndef SAMPLE_KERNEL_CUH
-#define SAMPLE_KERNEL_CUH
+#include "sample_kernel.cuh"
 
 __global__ void cuda_kernel(int* array, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -12,5 +8,23 @@ __global__ void cuda_kernel(int* array, int size) {
     }
 }
 
-#endif // SAMPLE_KERNEL_CUH
+void runKernel(int* array, int size) {
+    // Launch the CUDA kernel
+    cuda_kernel<<<(size + 255) / 256, 256>>>(array, size);
+    cudaDeviceSynchronize();
+}
 
+void allocateMemory(int** array_device, int size) {
+    // Allocate memory on the device
+    cudaMalloc((void**)array_device, size * sizeof(int));
+}
+
+void freeMemory(int* array_device) {
+    // Free memory on the device
+    cudaFree(array_device);
+}
+
+void copyResultToDevice(int* array_device, int* array_host, int size) {
+    // Copy result from host to device
+    cudaMemcpy(array_device, array_host, size * sizeof(int), cudaMemcpyHostToDevice);
+}
