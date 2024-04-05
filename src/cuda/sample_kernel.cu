@@ -8,23 +8,23 @@ __global__ void cuda_kernel(int* array, int size) {
     }
 }
 
-void runKernel(int* array, int size) {
+void sampleRun(int* array, int size) {
     // Launch the CUDA kernel
     cuda_kernel<<<(size + 255) / 256, 256>>>(array, size);
     cudaDeviceSynchronize();
 }
 
-void allocateMemory(int** array_device, int size) {
+void sampleAllocate(int** array_device, int size) {
     // Allocate memory on the device
     cudaMalloc((void**)array_device, size * sizeof(int));
 }
 
-void freeMemory(int* array_device) {
+void sampleFree(int* array_device) {
     // Free memory on the device
     cudaFree(array_device);
 }
 
-void copyResultToDevice(int* array_device, int* array_host, int size) {
+void sampleCopy(int* array_device, int* array_host, int size) {
     // Copy result from host to device
     cudaMemcpy(array_device, array_host, size * sizeof(int), cudaMemcpyHostToDevice);
 }

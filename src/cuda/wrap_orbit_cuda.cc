@@ -1,10 +1,11 @@
 #include "Python.h"
 #include "wrap_orbit_cuda.hh"
 #include "sample_kernel.cuh"
+#include "MatrixVec_kernel.cuh"
 
 namespace wrap_orbit_cuda {
 
-    PyObject* runKernel_wrapper(PyObject* self, PyObject* args) {
+    PyObject* sampleRun_wrapper(PyObject* self, PyObject* args) {
         PyObject* py_array;
         int size;
 
@@ -23,7 +24,7 @@ namespace wrap_orbit_cuda {
         array = (int*)buf.buf;
 
         // Run the kernel
-        runKernel(array, size);
+        sampleRun(array, size);
 
         // Release the buffer
         PyBuffer_Release(&buf);
@@ -33,7 +34,7 @@ namespace wrap_orbit_cuda {
         return Py_None;
     }
 
-    PyObject* allocateMemory_wrapper(PyObject* self, PyObject* args) {
+    PyObject* sampleAllocate_wrapper(PyObject* self, PyObject* args) {
         int size;
 
         // Parse arguments
@@ -43,29 +44,13 @@ namespace wrap_orbit_cuda {
 
         // Allocate memory on the device
         int* array_device;
-        allocateMemory(&array_device, size);
+        sampleAllocate(&array_device, size);
 
         // Return the device memory pointer
         return PyLong_FromVoidPtr((void*)array_device);
     }
 
-    PyObject* freeMemory_wrapper(PyObject* self, PyObject* args) {
-        long device_pointer;
-
-        // Parse arguments
-        if (!PyArg_ParseTuple(args, "l", &device_pointer)) {
-            return NULL;
-        }
-
-        // Free memory on the device
-        freeMemory((int*)device_pointer);
-
-        // Return None
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
-
-    PyObject* copyResultToDevice_wrapper(PyObject* self, PyObject* args) {
+       PyObject* sampleCopy_wrapper(PyObject* self, PyObject* args) { 
         PyObject* py_array_device;
         PyObject* py_array_host;
         int size;
@@ -93,7 +78,7 @@ namespace wrap_orbit_cuda {
         array_host = (int*)buf_host.buf;
 
         // Copy result from host to device
-        copyResultToDevice(array_device, array_host, size);
+        sampleCopy(array_device, array_host, size);
 
         // Release the buffers
         PyBuffer_Release(&buf_device);
@@ -103,13 +88,113 @@ namespace wrap_orbit_cuda {
         Py_INCREF(Py_None);
         return Py_None;
     }
+    PyObject* sampleFree_wrapper(PyObject* self, PyObject* args) {
+        long device_pointer;
+
+        // Parse arguments
+        if (!PyArg_ParseTuple(args, "l", &device_pointer)) {
+            return NULL;
+        }
+
+        // Free memory on the device
+        sampleFree((int*)device_pointer);
+
+        // Return None
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    PyObject* matrixVecRun_wrapper(PyObject* self, PyObject* args) {
+	    PyObject *py_deviceMatrix, *py_deviceVector, *py_deviceResult;
+	    int matrixRows, matrixCols, vectorSize;
+
+	    // Parse arguments
+	    if (!PyArg_ParseTuple(args, "OOOiii", &py_deviceMatrix, &py_deviceVector, &py_deviceResult, &matrixRows, &matrixCols, &vectorSize)) {
+		return NULL;
+	    }
+
+	    // Convert PyObjects to device pointers
+	    float *deviceMatrix = (float *)PyLong_AsVoidPtr(py_deviceMatrix);
+	    float *deviceVector = (float *)PyLong_AsVoidPtr(py_deviceVector);
+	    float *deviceResult = (float *)PyLong_AsVoidPtr(py_deviceResult);
+
+	    // Call the MatrixVecRun function
+	    MatrixVecRun(deviceMatrix, deviceVector, deviceResult, matrixRows, matrixCols, vectorSize);
+
+	    // Return None
+	    Py_INCREF(Py_None);
+	    return Py_None;
+	}
+
+    
+    PyObject* matrixVecCopy_wrapper(PyObject* self, PyObject* args) {
+        PyObject *py_deviceResult, *py_hostResult;
+        int vectorSize;
+
+        // Parse arguments
+        if (!PyArg_ParseTuple(args, "OOi", &py_deviceResult, &py_hostResult, &vectorSize)) {
+            return NULL;
+        }
+
+        // Convert PyObjects to device pointers
+        float *deviceResult = (float *)PyLong_AsVoidPtr(py_deviceResult);
+        float *hostResult = (float *)PyLong_AsVoidPtr(py_hostResult);
+
+        // Call the MatrixVecCopy function
+        MatrixVecCopy(deviceResult, hostResult, vectorSize);
+
+        // Return None
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    PyObject* matrixVecAllocate_wrapper(PyObject* self, PyObject* args) {
+        int matrixRows, matrixCols, vectorSize;
+
+        // Parse arguments
+        if (!PyArg_ParseTuple(args, "iii", &matrixRows, &matrixCols, &vectorSize)) {
+            return NULL;
+        }
+
+        // Allocate memory on the device
+        float *deviceMatrix, *deviceVector, *deviceResult;
+        MatrixVecInit(&deviceMatrix, &deviceVector, &deviceResult, matrixRows, matrixCols, vectorSize);
+
+        // Return the device memory pointers
+        return Py_BuildValue("OOO", PyLong_FromVoidPtr((void*)deviceMatrix), PyLong_FromVoidPtr((void*)deviceVector), PyLong_FromVoidPtr((void*)deviceResult));
+    }
+
+    PyObject* matrixVecFree_wrapper(PyObject* self, PyObject* args) {
+        PyObject *py_deviceMatrix, *py_deviceVector, *py_deviceResult;
+
+        // Parse arguments
+        if (!PyArg_ParseTuple(args, "OOO", &py_deviceMatrix, &py_deviceVector, &py_deviceResult)) {
+            return NULL;
+        }
+
+        // Convert PyObjects to device pointers
+        float *deviceMatrix = (float *)PyLong_AsVoidPtr(py_deviceMatrix);
+        float *deviceVector = (float *)PyLong_AsVoidPtr(py_deviceVector);
+        float *deviceResult = (float *)PyLong_AsVoidPtr(py_deviceResult);
+
+        // Free memory on the device
+        MatrixVecFree(deviceMatrix, deviceVector, deviceResult);
+
+        // Return None
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
 
     // Method definitions
     static PyMethodDef sample_cudaMethods[] = {
-        {"runKernel", runKernel_wrapper, METH_VARARGS, "Run the CUDA kernel"},
-        {"allocateMemory", allocateMemory_wrapper, METH_VARARGS, "Allocate memory on the device"},
-        {"freeMemory", freeMemory_wrapper, METH_VARARGS, "Free memory on the device"},
-        {"copyResultToDevice", copyResultToDevice_wrapper, METH_VARARGS, "Copy result from host to device"},
+        {"sampleRun", sampleRun_wrapper, METH_VARARGS, "Run the CUDA kernel"},
+        {"sampleAllocate", sampleAllocate_wrapper, METH_VARARGS, "Allocate memory on the device"},
+        {"sampleFree", sampleFree_wrapper, METH_VARARGS, "Free memory on the device"},
+        {"sampleCopy", sampleCopy_wrapper, METH_VARARGS, "Copy result from host to device"},
+	{"matrixVecRun", matrixVecRun_wrapper, METH_VARARGS, "Run the MatrixVec CUDA kernel"},
+        {"matrixVecAllocate", matrixVecAllocate_wrapper, METH_VARARGS, "Allocate memory on the device for MatrixVec"},
+        {"matrixVecFree", matrixVecFree_wrapper, METH_VARARGS, "Free memory on the device for MatrixVec"},
+        {"matrixVecCopy", matrixVecCopy_wrapper, METH_VARARGS, "Copy result from host to device for MatrixVec"},
         {NULL, NULL, 0, NULL}
     };
 
