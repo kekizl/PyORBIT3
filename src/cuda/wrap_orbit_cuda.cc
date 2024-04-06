@@ -5,6 +5,11 @@
 
 namespace wrap_orbit_cuda {
 
+
+	#ifdef __cplusplus
+	extern "C" {
+	#endif
+
     PyObject* sampleRun_wrapper(PyObject* self, PyObject* args) {
         PyObject* py_array;
         int size;
@@ -199,7 +204,7 @@ namespace wrap_orbit_cuda {
     };
 
     // Module definition
-    static struct PyModuleDef sample_cudaModule = {
+    static struct PyModuleDef cModPyDem = {
         PyModuleDef_HEAD_INIT,
         "sample_cuda",
         "Python wrappers for sample CUDA functions",
@@ -208,8 +213,15 @@ namespace wrap_orbit_cuda {
     };
 
     // Module initialization function
-    PyMODINIT_FUNC PyInit_sample_cuda(void) {
-        return PyModule_Create(&sample_cudaModule);
+    PyMODINIT_FUNC initorbit_cuda() {
+        PyObject* module = PyModule_Create(&cModPyDem);
+    	return module;
     }
+
+	#ifdef __cplusplus
+	}
+	#endif
+
+	//end of namespace
 }
 
