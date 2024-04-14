@@ -21,7 +21,7 @@ from orbit.core.orbit_utils import Polynomial, Function
 from orbit.py_linac.lattice.LinacAccNodes import BaseLinacNode
 
 # from linac import the RF gap classes
-from orbit.core.linac import BaseRfGap, MatrixRfGap, RfGapTTF, RfGapThreePointTTF, BaseRfGap_slow, RfGapTTF_slow, RfGapThreePointTTF_slow
+from orbit.core.linac import BaseRfGap, altMatrixRfGap, MatrixRfGap, RfGapTTF, RfGapThreePointTTF, BaseRfGap_slow, RfGapTTF_slow, RfGapThreePointTTF_slow
 
 # The abstract RF gap import
 from orbit.py_linac.lattice.LinacAccNodes import AbstractRF_Gap
@@ -81,6 +81,7 @@ class BaseRF_Gap(AbstractRF_Gap):
         self.__isFirstGap = False
         # ---- by default we use the TTF model
         # ---- which is a Transit-Time-Factor model from Parmila
+        # self.cppGapModel = altMatrixRfGap()
         # self.cppGapModel = MatrixRfGap()
         # self.cppGapModel = BaseRfGap()
         self.cppGapModel = RfGapTTF()
@@ -242,6 +243,7 @@ class BaseRF_Gap(AbstractRF_Gap):
             return
         if (
             isinstance(self.cppGapModel, MatrixRfGap)
+            or isinstance(self.cppGapModel, altMatrixRfGap)
             or isinstance(self.cppGapModel, BaseRfGap)
             or isinstance(self.cppGapModel, BaseRfGap_slow)
         ):
@@ -283,6 +285,7 @@ class BaseRF_Gap(AbstractRF_Gap):
             return
         if (
             isinstance(self.cppGapModel, MatrixRfGap)
+            or isinstance(self.cppGapModel, altMatrixRfGap)
             or isinstance(self.cppGapModel, BaseRfGap)
             or isinstance(self.cppGapModel, BaseRfGap_slow)
         ):
