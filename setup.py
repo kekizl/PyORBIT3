@@ -4,6 +4,7 @@ import os
 from os.path import join as pjoin
 from distutils.command.build_ext import build_ext
 
+cudaLocated = False
 def find_in_path(name, path):
     """Find a file in a search path"""
 
@@ -22,11 +23,11 @@ def locate_cuda():
     Starts by looking for the CUDAHOME env variable. If not found,
     everything is based on finding 'nvcc' in the PATH.
     """
-
-    # First check if the CUDAHOME env variable is in use
+       # First check if the CUDAHOME env variable is in use
     if 'CUDAHOME' in os.environ:
         home = os.environ['CUDAHOME']
         nvcc = pjoin(home, 'bin', 'nvcc')
+
     else:
         # Otherwise, search the PATH for NVCC
         nvcc = find_in_path('nvcc', os.environ['PATH'])
@@ -94,9 +95,12 @@ class custom_build_ext(build_ext):
         build_ext.build_extensions(self)
 
 
-
-CUDA = locate_cuda()
-
+try:
+    CUDA = locate_cuda()
+    cudaLocated = True
+except EnvironmentError as e:
+    print("CUDA could not be located:", e)
+    print("Proceeding without CUDA support.")
 # main dir is special
 # we need it in include but not the actual main.cc
 # libmain contains python package def, we don't want it in C++ sources
@@ -105,13 +109,7 @@ cuda_src = []
 src = []
 
 for f in Path("src").rglob("*.cu"):
-    excludes = ["main/main.cc"]
-    include = True
-    for e in excludes:
-        if str(f).endswith(e):
-            include = False
-    if include:
-        src.append(str(f))
+    src.append(str(f))
 
 for f in Path("src").rglob("*.cc"):
     excludes = ["main/main.cc"]
@@ -132,18 +130,24 @@ for folder in os.walk("src"):
 #removed "-arch=sm_30" flag from extra_compile_args=because it throws errors
 extension_mod = Extension(
     "orbit.core._orbit",
-    sources=cuda_src + src,
-    library_dirs = [CUDA['lib64']],
-    libraries=["fftw3", "cudart"],
-    runtime_library_dirs = [CUDA['lib64']],
-    include_dirs=include + [CUDA['include']],
+    sources=src,
+    libraries=["fftw3"],
+    include_dirs=include,
     extra_compile_args={
     'gcc': ["-DUSE_MPI=1", "-fPIC", "-lmpi", "-lmpicxx", "-Wl,--enable-new-dtags"],
     'nvcc': ["--ptxas-options=-v", "-c", "--compiler-options", "'-fPIC'"],
     },
-    extra_link_args=["-lfftw3", "-lm", "-lmpi", "-lmpicxx", "-fPIC", "-lcudart", "-L/usr/local/cuda-12.4/lib64"],
+    extra_link_args=["-lfftw3", "-lm", "-lmpi", "-lmpicxx", "-fPIC"],
 )
 
+if cudaLocated:
+    extension_mod.sources = cuda_src + extension_mod.sources 
+    extension_mod.library_dirs += CUDA['lib64']
+    extension_mod.libraries += ["cudart"]
+    extension_mod.runtime_library_dirs += CUDA['lib64']
+    extension_mod.include_dirs += CUDA['include']
+    extension_mod.extra_compile_args['nvcc'] += ["--compiler-options", "'-fPIC'"]
+    extension_mod.extra_link_args += ["-lcudart", "-L/usr/local/cuda/lib64"]    
 packages = ["orbit.core"]
 for folder in os.walk("py/orbit"):
     path = os.path.normpath(folder[0])
@@ -161,8 +165,7 @@ package_dir = {
 # Pythonic fashion.
 core_modules = [
     "aperture",
-    "orbit_mpi",
-    "orbit_cuda",
+    "orbit_mpi", 
     "trackerrk4",
     "error_base",
     "bunch",
@@ -177,6 +180,10 @@ core_modules = [
     "impedances",
     "fieldtracker",
 ]
+
+if cudaLocated:
+    core_modules.append("orbit_cuda")
+
 for mod in core_modules:
     packages.append(f"orbit.core.{mod}")
     package_dir.update({f"orbit.core.{mod}": "src/libmain/module_template"})

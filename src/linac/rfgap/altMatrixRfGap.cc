@@ -19,7 +19,7 @@ ORNL Tech. Note ORNL/TM-2015/247, June 2015
 #include <iostream>
 #include <cstring>
 #include <cmath>
-#include "VectorPerThread_kernel.cuh"
+#include "batch_kernel.cuh"
 
 using namespace OrbitUtils;
 
@@ -72,49 +72,40 @@ void altMatrixRfGap::trackBunch(Bunch* bunch, double frequency, double E0TL, dou
     	const int numVectors = bunch->getSize();	
 	const int matrixSize = 6;
 	const int vectorSize = 6;
-	
+	const int batchSize = 10000;
+	const int numBatches = numVectors/batchSize;
+
 	double **coordArray = bunch->coordArr();
-	int numElements = numVectors * vectorSize;
 
 	// Create a new double array to hold the combined data
-	double *h_vectors = new double[numElements];
+	double *h_vectors = new double[numVectors * vectorSize];
 
 	// Copy the data from coordArray to h_vectors
 	for (int i = 0; i < numVectors; ++i) {
 	    std::memcpy(h_vectors + i * vectorSize, coordArray[i], sizeof(double) * vectorSize);
 	}
-
-	double *h_matrix = new double[matrixSize * matrixSize];
-	double transfMatrix[6][6] = {
-	    {1, 0, 0, 0, 0, 0},
-	    {d_rp, prime_coeff, 0, 0, 0, 0},
-	    {0, 0, 1, 0, 0, 0},
-	    {0, 0, d_rp, prime_coeff, 0, 0},
-	    {0, 0, 0, 0, 1, 0},
-	    {0, 0, 0, 0, d_rp, prime_coeff}
-	};
-
-	// Copy values from transfMatrix to h_matrix
-	for (int i = 0; i < matrixSize; ++i) {
-	    for (int j = 0; j < matrixSize; ++j) {
-		h_matrix[i * matrixSize + j] = transfMatrix[i][j];
-	    }
-	}
+	double h_matrix[matrixSize * matrixSize] = {
+	    1, 0, 0, 0, 0, 0,
+	    d_rp, prime_coeff, 0, 0, 0, 0,
+	    0, 0, 1, 0, 0, 0,
+	    0, 0, d_rp, prime_coeff, 0, 0,
+	    0, 0, 0, 0, 1, 0,
+	    0, 0, 0, 0, d_rp, prime_coeff
+	};	
 	double *h_results = new double[numVectors * vectorSize];
 
-    double *d_vectors, *d_matrix, *d_results;
-    cudaAllocateMemory(&d_vectors, &d_matrix, &d_results, numVectors, vectorSize, matrixSize);
+    double *d_matrix, *d_results, *d_batch;
+    cudaAllocateMemoryBatch(&d_batch, &d_matrix, &d_results, numBatches, vectorSize, matrixSize);
+    cudaSetMatrix(h_matrix, d_matrix, matrixSize);
 
-    // Copy host data to device
-    cudaSet(h_vectors, h_matrix, d_vectors, d_matrix, numVectors, vectorSize, matrixSize);
-    runMatrixVectorMultiplyKernel(d_vectors, d_matrix, d_results, numVectors, vectorSize, matrixSize);
+    for (int currentBatch = 0; currentBatch < numBatches; currentBatch++) {
+        int startIdx = currentBatch * batchSize * vectorSize;
+        runMatrixVectorBatchKernel(h_vectors, h_results, d_batch, d_matrix, d_results, batchSize, vectorSize, startIdx);
+    }
 
-    // Copy results from device to host
-    cudaCopyDeviceToHost(d_vectors, d_results, h_results, numVectors, vectorSize);
-
-  
+    cudaFreeBatch(d_matrix, d_batch, d_results);
+    for (int i = 0; i < numVectors; ++i) {
+    std::memcpy(coordArray[i], h_results + i * vectorSize, sizeof(double) * vectorSize);
+}
  
-    // Free memory
-    cudaFreeAll(d_matrix, d_vectors, d_results);
-
 }

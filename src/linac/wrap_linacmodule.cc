@@ -4,6 +4,7 @@
 #include "wrap_BaseRfGap.hh"
 #include "wrap_BaseRfGap_slow.hh"
 #include "wrap_MatrixRfGap.hh"
+#include "wrap_altMatrixRfGap.hh"
 #include "wrap_RfGapTTF.hh"
 #include "wrap_RfGapTTF_slow.hh"
 #include "wrap_SuperFishFieldSource.hh"
@@ -34,7 +35,8 @@ extern "C" {
         wrap_linac::initBaseRfGap(module);
         wrap_linac::initBaseRfGap_slow(module);
         wrap_linac::initMatrixRfGap(module);
-        wrap_linac::initRfGapTTF(module);
+        wrap_linac::initaltMatrixRfGap(module);
+	wrap_linac::initRfGapTTF(module);
         wrap_linac::initRfGapTTF_slow(module);
         wrap_linac::initSuperFishFieldSource(module);
         wrap_linac::initRfGapThreePointTTF(module);
