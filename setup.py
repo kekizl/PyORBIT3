@@ -4,7 +4,6 @@ import os
 from os.path import join as pjoin
 from distutils.command.build_ext import build_ext
 
-cudaLocated = False
 def find_in_path(name, path):
     """Find a file in a search path"""
 
@@ -86,21 +85,22 @@ def customize_compiler_for_nvcc(self):
     # Inject our redefined _compile method into the class
     self._compile = _compile
 
-
+CUDA = None
+try:
+    CUDA = locate_cuda()
+except EnvironmentError as e:
+    print("CUDA could not be located:", e)
+    print("Proceeding without CUDA support.")
+    cudaLocated = False
 
 # Run the customize_compiler
 class custom_build_ext(build_ext):
     def build_extensions(self):
-        customize_compiler_for_nvcc(self.compiler)
+        if CUDA is not None:
+            customize_compiler_for_nvcc(self.compiler)
         build_ext.build_extensions(self)
 
 
-try:
-    CUDA = locate_cuda()
-    cudaLocated = True
-except EnvironmentError as e:
-    print("CUDA could not be located:", e)
-    print("Proceeding without CUDA support.")
 # main dir is special
 # we need it in include but not the actual main.cc
 # libmain contains python package def, we don't want it in C++ sources
@@ -109,7 +109,7 @@ cuda_src = []
 src = []
 
 for f in Path("src").rglob("*.cu"):
-    src.append(str(f))
+    cuda_src.append(str(f))
 
 for f in Path("src").rglob("*.cc"):
     excludes = ["main/main.cc"]
@@ -127,27 +127,29 @@ for folder in os.walk("src"):
         include.append(folder[0])
         print(folder[0])
 
-#removed "-arch=sm_30" flag from extra_compile_args=because it throws errors
+
+# Define the extra compile args separately for gcc and nvcc
+extra_compile_args = {
+    'gcc': ["-DUSE_MPI=1", "-fPIC", "-lmpi", "-lmpicxx", "-Wl,--enable-new-dtags"],
+    'nvcc': ["--ptxas-options=-v", "-c", "--compiler-options", "'-fPIC'", "--compiler-options", "'-fPIC'"],
+}
+
+# Define the extra link args
+extra_link_args = ["-lfftw3", "-lm", "-lmpi", "-lmpicxx", "-fPIC"]
+
+# Construct the extension module based on CUDA availability
 extension_mod = Extension(
     "orbit.core._orbit",
-    sources=src,
-    libraries=["fftw3"],
-    include_dirs=include,
-    extra_compile_args={
-    'gcc': ["-DUSE_MPI=1", "-fPIC", "-lmpi", "-lmpicxx", "-Wl,--enable-new-dtags"],
-    'nvcc': ["--ptxas-options=-v", "-c", "--compiler-options", "'-fPIC'"],
-    },
-    extra_link_args=["-lfftw3", "-lm", "-lmpi", "-lmpicxx", "-fPIC"],
+    sources=cuda_src + src if CUDA is not None else src,
+    libraries=["fftw3", "cudart"] if CUDA is not None else ["fftw3"],
+    include_dirs=include + CUDA['include'] if CUDA is not None else include,
+    library_dirs=CUDA['lib64'] if CUDA is not None else [],
+    runtime_library_dirs=CUDA['lib64'] if CUDA is not None else [],
+    extra_compile_args=extra_compile_args.get('gcc', []) + extra_compile_args.get('nvcc', []) if CUDA is not None else extra_compile_args.get('gcc', []),
+    extra_link_args=extra_link_args + ["-lcudart", "-L/usr/local/cuda/lib64"] if CUDA is not None else extra_link_args,
 )
 
-if cudaLocated:
-    extension_mod.sources = cuda_src + extension_mod.sources 
-    extension_mod.library_dirs += CUDA['lib64']
-    extension_mod.libraries += ["cudart"]
-    extension_mod.runtime_library_dirs += CUDA['lib64']
-    extension_mod.include_dirs += CUDA['include']
-    extension_mod.extra_compile_args['nvcc'] += ["--compiler-options", "'-fPIC'"]
-    extension_mod.extra_link_args += ["-lcudart", "-L/usr/local/cuda/lib64"]    
+
 packages = ["orbit.core"]
 for folder in os.walk("py/orbit"):
     path = os.path.normpath(folder[0])
