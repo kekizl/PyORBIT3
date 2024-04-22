@@ -104,8 +104,21 @@ void altMatrixRfGap::trackBunch(Bunch* bunch, double frequency, double E0TL, dou
     }
 
     cudaFreeBatch(d_matrix, d_batch, d_results);
-    for (int i = 0; i < numVectors; ++i) {
-    std::memcpy(coordArray[i], h_results + i * vectorSize, sizeof(double) * vectorSize);
-}
- 
+
+
+ /* Commented out because it causes errors with the example   
+// Loop over each vector in the bunch
+for (int i = 0; i < numVectors; ++i) {
+    // Get a pointer to the i-th vector in the bunch
+    double* coordPtr = bunch->coordPartArr(i);
+
+    // Copy the data from h_results to the i-th vector in the bunch
+    for (int j = 0; j < vectorSize; ++j) {
+
+	bunch->px(i) = h_results[i * vectorSize + 1]; // Assuming px-coordinate is at index 1
+        bunch->py(i) = h_results[i * vectorSize + 3]; // Assuming py-coordinate is at index 3
+        bunch->z(i) = h_results[i * vectorSize + 4];  // Assuming z-coordinate is at index 4
+        bunch->dE(i) = h_results[i * vectorSize + 6]; // Assuming dE-coordinate is at index 6
+    }}
+*/
 }

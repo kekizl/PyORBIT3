@@ -74,6 +74,8 @@ def customize_compiler_for_nvcc(self):
             self.set_executable('compiler_so', CUDA['nvcc'])
             # use only a subset of the extra_postargs, which are 1-1
             # translated from the extra_compile_args in the Extension class
+            print("Extra postargs:", extra_postargs)
+
             postargs = extra_postargs['nvcc']
         else:
             postargs = extra_postargs['gcc']
@@ -91,8 +93,7 @@ try:
 except EnvironmentError as e:
     print("CUDA could not be located:", e)
     print("Proceeding without CUDA support.")
-    cudaLocated = False
-
+    
 # Run the customize_compiler
 class custom_build_ext(build_ext):
     def build_extensions(self):
@@ -127,13 +128,18 @@ for folder in os.walk("src"):
         include.append(folder[0])
         print(folder[0])
 
+if CUDA is not None:
+    library_dirs = [CUDA['lib64']]
+    runtime_library_dirs = [CUDA['lib64']]
+else:
+    library_dirs = []
+    runtime_library_dirs = []
 
-# Define the extra compile args separately for gcc and nvcc
 extra_compile_args = {
-    'gcc': ["-DUSE_MPI=1", "-fPIC", "-lmpi", "-lmpicxx", "-Wl,--enable-new-dtags"],
-    'nvcc': ["--ptxas-options=-v", "-c", "--compiler-options", "'-fPIC'", "--compiler-options", "'-fPIC'"],
-}
-
+    "gcc": ["-DUSE_MPI=1", "-fPIC", "-lmpi", "-lmpicxx", "-Wl,--enable-new-dtags"],
+    "nvcc": ["--ptxas-options=-v", "-c", "--compiler-options", "-fPIC"]
+} if CUDA is not None else {
+    "gcc": ["-DUSE_MPI=1", "-fPIC", "-lmpi", "-lmpicxx", "-Wl", "--enable-new-dtags"]}
 # Define the extra link args
 extra_link_args = ["-lfftw3", "-lm", "-lmpi", "-lmpicxx", "-fPIC"]
 
@@ -142,10 +148,10 @@ extension_mod = Extension(
     "orbit.core._orbit",
     sources=cuda_src + src if CUDA is not None else src,
     libraries=["fftw3", "cudart"] if CUDA is not None else ["fftw3"],
-    include_dirs=include + CUDA['include'] if CUDA is not None else include,
-    library_dirs=CUDA['lib64'] if CUDA is not None else [],
-    runtime_library_dirs=CUDA['lib64'] if CUDA is not None else [],
-    extra_compile_args=extra_compile_args.get('gcc', []) + extra_compile_args.get('nvcc', []) if CUDA is not None else extra_compile_args.get('gcc', []),
+    include_dirs=include + [CUDA['include']] if CUDA is not None else include,
+    library_dirs=library_dirs,
+    runtime_library_dirs=runtime_library_dirs,
+    extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args + ["-lcudart", "-L/usr/local/cuda/lib64"] if CUDA is not None else extra_link_args,
 )
 
@@ -183,7 +189,7 @@ core_modules = [
     "fieldtracker",
 ]
 
-if cudaLocated:
+if CUDA is not None:
     core_modules.append("orbit_cuda")
 
 for mod in core_modules:
